@@ -42,7 +42,7 @@ class BabysecSelfieApp {
       camera: this.camera,
       onTick: (payload) => this.#onRecorderTick(payload),
       onComplete: (blob) => this.#handleRecordingComplete(blob),
-      onError: (error) => this.#handleError(error.message),
+      onError: (error) => this.#handleError(error.message, 'camera'),
     });
 
     /** @type {Blob|null} */
@@ -59,6 +59,9 @@ class BabysecSelfieApp {
 
     /** @type {object|null} */
     this.#uploadResult = null;
+
+    /** @type {'upload'|'share'|'camera'|'register'|null} */
+    this.#lastErrorKind = null;
 
     /** @type {boolean} */
     this.#registering = false;
@@ -78,6 +81,9 @@ class BabysecSelfieApp {
 
   /** @type {object|null} */
   #uploadResult;
+
+  /** @type {'upload'|'share'|'camera'|'register'|null} */
+  #lastErrorKind;
 
   /** @type {boolean} */
   #registering;
@@ -136,6 +142,8 @@ class BabysecSelfieApp {
     this.#participantUuid = null;
     this.#userData = null;
     this.#lastBlob = null;
+    this.#uploadResult = null;
+    this.#lastErrorKind = null;
     this.recorder.cancel();
     this.preview.clear();
     this.ui.updateLiveIndicators({});
@@ -171,6 +179,9 @@ class BabysecSelfieApp {
       this.ui.clearRegistrationErrors();
       this.#participantUuid = null;
       this.#userData = null;
+      this.#lastBlob = null;
+      this.#uploadResult = null;
+      this.#lastErrorKind = null;
       history.pushState({ app: 'babysec', screen: 'registration' }, '');
       this.stateManager.setState(AppState.REGISTRATION);
     } finally {
@@ -233,6 +244,7 @@ class BabysecSelfieApp {
     } catch (error) {
       this.#handleError(
         error instanceof Error ? error.message : 'No se pudo completar el registro.',
+        this.#participantUuid ? 'camera' : 'register',
       );
     } finally {
       this.#registering = false;
@@ -267,6 +279,8 @@ class BabysecSelfieApp {
   #handleRetry() {
     this.preview.clear();
     this.#lastBlob = null;
+    this.#uploadResult = null;
+    this.#lastErrorKind = null;
     this.recorder.cancel();
     this.ui.updateLiveIndicators({});
     this.stateManager.setState(AppState.CAMERA);
@@ -275,22 +289,61 @@ class BabysecSelfieApp {
   async #handleSend() {
     const blob = this.preview.getBlob();
     if (!blob || !this.#participantUuid) {
-      this.#handleError('Falta el registro del participante. Volvé a completar tus datos.');
+      this.#handleError(
+        'Falta el registro del participante. Volvé a completar tus datos.',
+        'register',
+      );
+      return;
+    }
+
+    // Ya subido en esta sesión: no reenviar (evita "ya tiene un video").
+    if (this.#uploadResult) {
+      this.ui.showFinished({
+        ...this.#uploadResult,
+        user: this.#userData ?? this.#uploadResult.user,
+      });
+      this.stateManager.setState(AppState.FINISHED);
       return;
     }
 
     this.stateManager.setState(AppState.UPLOADING);
-    this.ui.setUploadMessage('Subiendo video...');
+    this.ui.setUploadMessage('Preparando subida...');
+    this.ui.setUploadProgress(0);
 
     try {
-      const result = await this.uploader.upload(blob, this.#participantUuid, this.#lastFilename);
+      const result = await this.uploader.upload(
+        blob,
+        this.#participantUuid,
+        this.#lastFilename,
+        {
+          onProgress: (progress) => {
+            this.ui.setUploadMessage(progress.message);
+            this.ui.setUploadProgress(progress.percent);
+          },
+        },
+      );
       this.#uploadResult = result;
+      this.#lastErrorKind = null;
       this.ui.showFinished({ ...result, user: this.#userData ?? result.user });
       this.stateManager.setState(AppState.FINISHED);
     } catch (error) {
-      this.#handleError(
-        error instanceof Error ? error.message : 'Error al subir el video.',
-      );
+      const message = error instanceof Error ? error.message : 'Error al subir el video.';
+
+      // Subida previa OK en servidor: recuperar pantalla final en vez de error duro.
+      if (/ya tiene un video/i.test(message)) {
+        const fallback = this.#uploadResult ?? {
+          success: true,
+          message: 'Tu video ya estaba guardado.',
+          downloadUrl: this.ui.getFinishedDownloadUrl() ?? undefined,
+          user: this.#userData ?? undefined,
+        };
+        this.#uploadResult = fallback;
+        this.ui.showFinished({ ...fallback, user: this.#userData ?? fallback.user });
+        this.stateManager.setState(AppState.FINISHED);
+        return;
+      }
+
+      this.#handleError(message, 'upload');
     }
   }
 
@@ -312,6 +365,7 @@ class BabysecSelfieApp {
       } catch (error) {
         this.#handleError(
           error instanceof Error ? error.message : 'No se pudo descargar el video.',
+          'upload',
         );
       }
     }
@@ -319,6 +373,7 @@ class BabysecSelfieApp {
 
   /**
    * Publicar en redes vía Web Share API (Instagram, TikTok, WhatsApp, etc.).
+   * Los fallos no sacan de FINISHED (evita el bucle preview → "ya tiene video").
    */
   async #handleShare() {
     const blob = this.#lastBlob ?? this.preview.getBlob();
@@ -326,8 +381,20 @@ class BabysecSelfieApp {
       return;
     }
 
+    const stayOnFinished = Boolean(this.#uploadResult)
+      || this.stateManager.is(AppState.FINISHED);
+
+    const softFail = (message) => {
+      if (stayOnFinished) {
+        this.ui.showFinishedFeedback(message);
+        this.stateManager.setState(AppState.FINISHED);
+        return;
+      }
+      this.#handleError(message, 'share');
+    };
+
     if (!canShareFiles()) {
-      this.#handleError(
+      softFail(
         'Tu navegador no permite publicar directamente. Descargá el video y subilo a tus redes.',
       );
       return;
@@ -336,14 +403,21 @@ class BabysecSelfieApp {
     try {
       const shared = await shareVideoToSocial(blob, this.#lastFilename, this.#userData ?? {});
       if (!shared) {
-        this.#handleError(
+        softFail(
           'No se pudo abrir el menú de compartir. Descargá el video e importalo manualmente.',
         );
+        return;
       }
+      this.ui.clearFinishedFeedback();
     } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        this.#handleError(error.message);
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
       }
+      softFail(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo compartir. Descargá el video e importalo manualmente.',
+      );
     }
   }
 
@@ -351,15 +425,30 @@ class BabysecSelfieApp {
     this.recorder.cancel();
     this.ui.updateLiveIndicators({});
 
+    // Video ya subido (p. ej. error al compartir): volver a la pantalla final.
+    if (this.#uploadResult || this.#lastErrorKind === 'share') {
+      if (this.#uploadResult) {
+        this.ui.showFinished({
+          ...this.#uploadResult,
+          user: this.#userData ?? this.#uploadResult.user,
+        });
+      }
+      this.#lastErrorKind = null;
+      this.stateManager.setState(AppState.FINISHED);
+      return;
+    }
+
     // Fallo de subida: reintentar envío sin perder el video ni el UUID.
-    if (this.#lastBlob && this.#participantUuid) {
+    if (this.#lastErrorKind === 'upload' && this.#lastBlob && this.#participantUuid) {
       this.preview.show(this.#lastBlob);
+      this.#lastErrorKind = null;
       this.stateManager.setState(AppState.PREVIEW);
       return;
     }
 
     this.preview.clear();
     this.#lastBlob = null;
+    this.#lastErrorKind = null;
 
     // Cámara ya activa: volver a la vista en vivo.
     if (this.camera.getStream() && this.#participantUuid) {
@@ -378,6 +467,7 @@ class BabysecSelfieApp {
       } catch (error) {
         this.#handleError(
           error instanceof Error ? error.message : 'No se pudo acceder a la cámara.',
+          'camera',
         );
       }
       return;
@@ -387,7 +477,12 @@ class BabysecSelfieApp {
     this.stateManager.setState(AppState.LANDING);
   }
 
-  #handleError(message) {
+  /**
+   * @param {string} message
+   * @param {'upload'|'share'|'camera'|'register'|null} [kind]
+   */
+  #handleError(message, kind = null) {
+    this.#lastErrorKind = kind;
     this.ui.showErrorMessage(message);
     this.stateManager.setState(AppState.ERROR);
   }

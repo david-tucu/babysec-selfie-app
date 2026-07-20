@@ -117,6 +117,16 @@
         <div class="upload-overlay__box">
           <div class="spinner"></div>
           <p id="upload-message">Subiendo video...</p>
+          <div
+            id="upload-progress"
+            class="upload-progress"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div id="upload-progress-bar" class="upload-progress__bar"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -150,6 +160,8 @@
 
   </div>
 
+  <!-- ts-ebml (UMD): remux WebM seekable para players nativos Android -->
+  <script src="js/vendor/EBML.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

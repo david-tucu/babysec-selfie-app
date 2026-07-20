@@ -6,13 +6,13 @@ require_once __DIR__ . '/includes/auth.php';
 requireAdmin();
 
 $registrations = loadRegistrations();
-$today = (new DateTimeImmutable('today'))->format('Y-m-d');
+$today = (new DateTimeImmutable('today', appTimezone()))->format('Y-m-d');
 $todayCount = 0;
 $uploadedCount = 0;
 
 foreach ($registrations as $entry) {
-    $createdAt = (string) ($entry['created_at'] ?? '');
-    if ($createdAt !== '' && str_starts_with($createdAt, $today)) {
+    $createdDay = formatDateDay((string) ($entry['created_at'] ?? ''));
+    if ($createdDay === $today) {
         $todayCount++;
     }
     if (($entry['estado'] ?? '') === 'uploaded') {

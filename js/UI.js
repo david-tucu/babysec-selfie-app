@@ -62,6 +62,8 @@ export class UI {
       'btn-error-retry',
       'upload-overlay',
       'upload-message',
+      'upload-progress',
+      'upload-progress-bar',
       'error-message',
       'finished-message',
       'share-hint',
@@ -412,6 +414,30 @@ export class UI {
   }
 
   /**
+   * Actualiza barra de progreso de subida (0–100, o null si indeterminado).
+   * @param {number|null|undefined} percent
+   */
+  setUploadProgress(percent) {
+    const bar = this.#el['upload-progress-bar'];
+    const track = this.#el['upload-progress'];
+    if (!(bar instanceof HTMLElement) || !(track instanceof HTMLElement)) {
+      return;
+    }
+
+    if (typeof percent === 'number' && Number.isFinite(percent)) {
+      const clamped = Math.max(0, Math.min(100, percent));
+      track.classList.remove('upload-progress--indeterminate');
+      track.setAttribute('aria-valuenow', String(clamped));
+      bar.style.width = `${clamped}%`;
+      return;
+    }
+
+    track.classList.add('upload-progress--indeterminate');
+    track.removeAttribute('aria-valuenow');
+    bar.style.width = '40%';
+  }
+
+  /**
    * Muestra mensaje de error.
    * @param {string} message
    */
@@ -436,6 +462,38 @@ export class UI {
 
     if (data.downloadUrl) {
       this.#finishedDownloadUrl = data.downloadUrl;
+    }
+
+    this.clearFinishedFeedback();
+  }
+
+  /**
+   * Mensaje no bloqueante en pantalla final (ej. fallo al compartir).
+   * @param {string} message
+   */
+  showFinishedFeedback(message) {
+    const hint = this.#el['share-hint'];
+    if (!hint) {
+      return;
+    }
+    hint.textContent = message;
+    hint.classList.remove('hidden');
+  }
+
+  /**
+   * Restaura el hint de compartir por defecto.
+   */
+  clearFinishedFeedback() {
+    const hint = this.#el['share-hint'];
+    if (!hint) {
+      return;
+    }
+    hint.textContent =
+      'En este dispositivo podés descargar el video y subirlo manualmente a Instagram, TikTok o WhatsApp.';
+    if (canShareFiles()) {
+      hint.classList.add('hidden');
+    } else {
+      hint.classList.remove('hidden');
     }
   }
 

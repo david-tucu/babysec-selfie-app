@@ -120,9 +120,25 @@ function formatDate(?string $isoDate): string
     }
 
     try {
-        $dt = new DateTimeImmutable($isoDate);
+        $dt = (new DateTimeImmutable($isoDate))->setTimezone(appTimezone());
         return $dt->format('d/m/Y H:i');
     } catch (Exception) {
         return $isoDate;
+    }
+}
+
+/**
+ * Fecha local (Y-m-d) de un ISO guardado, en zona de la app.
+ */
+function formatDateDay(?string $isoDate): ?string
+{
+    if ($isoDate === null || $isoDate === '') {
+        return null;
+    }
+
+    try {
+        return (new DateTimeImmutable($isoDate))->setTimezone(appTimezone())->format('Y-m-d');
+    } catch (Exception) {
+        return null;
     }
 }

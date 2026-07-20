@@ -58,7 +58,7 @@ $uuid = sprintf(
     random_int(0, 0xffff),
 );
 
-$now = (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
+$now = appNowAtom();
 
 try {
     $pdo = Database::connection();

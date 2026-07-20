@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/timezone.php';
+
 /**
  * Conexion PDO a SQLite y bootstrap del esquema.
  */
@@ -32,8 +34,11 @@ final class Database
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
+            PDO::ATTR_TIMEOUT            => 5,
         ]);
 
+        // Evita cuelgues indefinidos si otro proceso tiene el sqlite ocupado (admin, etc.).
+        $pdo->exec('PRAGMA busy_timeout = 5000');
         $pdo->exec('PRAGMA foreign_keys = ON');
         self::migrate($pdo);
         self::$pdo = $pdo;

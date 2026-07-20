@@ -9,6 +9,23 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/includes/Database.php';
+require_once dirname(__DIR__) . '/includes/UploadTrace.php';
+
+UploadTrace::begin('upload');
+
+register_shutdown_function(static function (): void {
+    $err = error_get_last();
+    if ($err !== null && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        UploadTrace::step('shutdown_fatal', [
+            'type' => $err['type'],
+            'message' => $err['message'],
+            'file' => $err['file'] ?? null,
+            'line' => $err['line'] ?? null,
+        ]);
+    } else {
+        UploadTrace::step('shutdown');
+    }
+});
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -17,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $uuid = trim($_POST['uuid'] ?? '');
+UploadTrace::step('post_parsed', [
+    'uuid' => $uuid !== '' ? $uuid : null,
+    'has_video' => isset($_FILES['video']),
+    'content_length' => $_SERVER['CONTENT_LENGTH'] ?? null,
+]);
 
 if ($uuid === '' || !preg_match(
     '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
@@ -28,13 +50,17 @@ if ($uuid === '' || !preg_match(
 }
 
 try {
+    UploadTrace::step('db_connect_start');
     $pdo = Database::connection();
+    UploadTrace::step('db_connect_ok');
 } catch (Throwable $e) {
+    UploadTrace::step('db_connect_fail', ['error' => $e->getMessage()]);
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'No se pudo conectar a la base de datos.']);
     exit;
 }
 
+UploadTrace::step('select_participant_start');
 $stmt = $pdo->prepare(
     'SELECT id, uuid, nombre, apellido, localidad, email, estado
      FROM participantes
@@ -43,6 +69,10 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([':uuid' => $uuid]);
 $participant = $stmt->fetch();
+UploadTrace::step('select_participant_done', [
+    'found' => (bool) $participant,
+    'estado' => $participant['estado'] ?? null,
+]);
 
 if (!$participant) {
     http_response_code(404);
@@ -76,6 +106,7 @@ if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     $code = $_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE;
     $message = $errorMessages[$code] ?? 'Error desconocido al subir.';
 
+    UploadTrace::step('files_error', ['code' => $code, 'message' => $message]);
     markUploadFailed($pdo, (int) $participant['id']);
 
     http_response_code(400);
@@ -84,6 +115,12 @@ if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
 }
 
 $file = $_FILES['video'];
+UploadTrace::step('files_ok', [
+    'name' => $file['name'] ?? null,
+    'size' => $file['size'] ?? null,
+    'client_type' => $file['type'] ?? null,
+    'tmp_name' => isset($file['tmp_name']) ? basename((string) $file['tmp_name']) : null,
+]);
 
 $maxSize = 50 * 1024 * 1024;
 if ($file['size'] > $maxSize) {
@@ -93,8 +130,9 @@ if ($file['size'] > $maxSize) {
     exit;
 }
 
-$finfo = new finfo(FILEINFO_MIME_TYPE);
-$mimeType = $finfo->file($file['tmp_name']);
+UploadTrace::step('mime_detect_start');
+$mimeType = detectUploadMimeType($file);
+UploadTrace::step('mime_detect_done', ['mime' => $mimeType]);
 
 $allowedMimes = [
     'video/webm'               => 'webm',
@@ -128,16 +166,20 @@ $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $originalName) ?: 'sel
 $filename = $safeName . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
 $destination = $uploadDir . '/' . $filename;
 
+UploadTrace::step('move_start', ['destination' => $filename]);
 if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    UploadTrace::step('move_fail');
     markUploadFailed($pdo, (int) $participant['id']);
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'No se pudo guardar el video.']);
     exit;
 }
+UploadTrace::step('move_ok', ['bytes' => filesize($destination) ?: null]);
 
-$now = (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM);
+$now = appNowAtom();
 
 try {
+    UploadTrace::step('db_update_start');
     $update = $pdo->prepare(
         'UPDATE participantes
          SET estado = :estado,
@@ -156,7 +198,9 @@ try {
         ':updated_at'     => $now,
         ':id'             => (int) $participant['id'],
     ]);
+    UploadTrace::step('db_update_ok');
 } catch (Throwable $e) {
+    UploadTrace::step('db_update_fail', ['error' => $e->getMessage()]);
     // El archivo ya está en disco; marcamos failed pero no borramos el participante.
     markUploadFailed($pdo, (int) $participant['id']);
     @unlink($destination);
@@ -167,6 +211,8 @@ try {
 
 $baseUrl = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 $fileUrl = $baseUrl . '/uploads/videos/' . $filename;
+
+UploadTrace::step('response_ok', ['filename' => $filename, 'size' => (int) $file['size']]);
 
 echo json_encode([
     'success'     => true,
@@ -186,11 +232,65 @@ echo json_encode([
 ]);
 
 /**
+ * Detecta MIME sin depender de finfo/libmagic (puede colgar en algunos MAMP/macOS con WebM).
+ *
+ * @param array{name?: string, type?: string, tmp_name?: string} $file
+ */
+function detectUploadMimeType(array $file): ?string
+{
+    $tmp = (string) ($file['tmp_name'] ?? '');
+    $clientType = strtolower(trim((string) ($file['type'] ?? '')));
+    // Chrome manda "video/webm;codecs=vp9,opus" → normalizar.
+    if (str_contains($clientType, ';')) {
+        $clientType = trim(explode(';', $clientType, 2)[0]);
+    }
+
+    $ext = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+
+    if ($tmp !== '' && is_file($tmp)) {
+        $header = @file_get_contents($tmp, false, null, 0, 12);
+        if (is_string($header) && strlen($header) >= 4) {
+            // EBML / WebM
+            if (strncmp($header, "\x1A\x45\xDF\xA3", 4) === 0) {
+                return 'video/webm';
+            }
+            // MP4 / ISO BMFF: ....ftyp
+            if (strlen($header) >= 8 && substr($header, 4, 4) === 'ftyp') {
+                return 'video/mp4';
+            }
+            // Ogg
+            if (strncmp($header, 'OggS', 4) === 0) {
+                return 'video/ogg';
+            }
+        }
+    }
+
+    $byExt = [
+        'webm' => 'video/webm',
+        'mp4'  => 'video/mp4',
+        'm4v'  => 'video/mp4',
+        'ogg'  => 'video/ogg',
+        'ogv'  => 'video/ogg',
+    ];
+
+    if (isset($byExt[$ext])) {
+        return $byExt[$ext];
+    }
+
+    if (in_array($clientType, ['video/webm', 'video/mp4', 'video/ogg', 'application/octet-stream'], true)) {
+        return $clientType;
+    }
+
+    return $clientType !== '' ? $clientType : null;
+}
+
+/**
  * Marca el participante como failed sin eliminarlo.
  */
 function markUploadFailed(PDO $pdo, int $participantId): void
 {
     try {
+        UploadTrace::step('mark_failed_start', ['id' => $participantId]);
         $stmt = $pdo->prepare(
             'UPDATE participantes
              SET estado = :estado,
@@ -200,10 +300,11 @@ function markUploadFailed(PDO $pdo, int $participantId): void
         );
         $stmt->execute([
             ':estado'     => 'failed',
-            ':updated_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
+            ':updated_at' => appNowAtom(),
             ':id'         => $participantId,
         ]);
-    } catch (Throwable) {
-        // No enmascarar el error original de la subida.
+        UploadTrace::step('mark_failed_ok');
+    } catch (Throwable $e) {
+        UploadTrace::step('mark_failed_error', ['error' => $e->getMessage()]);
     }
 }

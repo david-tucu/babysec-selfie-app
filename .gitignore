@@ -6,4 +6,5 @@ data/database.sqlite
 data/database.sqlite-journal
 data/database.sqlite-wal
 data/database.sqlite-shm
+data/upload-trace.log
 .DS_Store

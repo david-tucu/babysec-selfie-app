@@ -37,6 +37,21 @@ export const FRAME_VIEWPORT = {
 export const CAPTURE_FPS = 30;
 
 /**
+ * Preferencia de codec para MediaRecorder (prueba de compatibilidad).
+ * - 'vp9' → video/webm;codecs=vp9,opus (default histórico)
+ * - 'vp8' → video/webm;codecs=vp8,opus (alternativa a comparar)
+ * Cambiar solo este valor; el resto del flujo no se altera.
+ * @type {'vp9'|'vp8'}
+ */
+export const RECORDER_VIDEO_CODEC = 'vp9';
+
+/** MIME exactos usados en la prueba VP9 vs VP8. */
+export const RECORDER_MIME_BY_CODEC = {
+  vp9: 'video/webm;codecs=vp9,opus',
+  vp8: 'video/webm;codecs=vp8,opus',
+};
+
+/**
  * Rectángulo destino donde se dibuja la cámara (agujero del marco).
  * @returns {{ x: number, y: number, width: number, height: number }}
  */
@@ -239,6 +254,20 @@ export async function downloadFromUrl(url, filename) {
 }
 
 /**
+ * Normaliza MIME de video para Web Share (Android suele rechazar codecs=...).
+ * @param {string|undefined} type
+ * @returns {string}
+ */
+export function normalizeShareMimeType(type) {
+  const raw = (type || 'video/webm').toLowerCase().trim();
+  const base = raw.split(';')[0].trim();
+  if (base === 'video/webm' || base === 'video/mp4' || base === 'video/ogg') {
+    return base;
+  }
+  return 'video/webm';
+}
+
+/**
  * Intenta compartir el video en redes sociales vía Web Share API.
  * @param {Blob} blob
  * @param {string} filename
@@ -250,40 +279,271 @@ export async function shareVideoToSocial(blob, filename, user = {}) {
   const title = displayName
     ? `${displayName} — babysec-selfie`
     : 'Mi selfie del evento';
-  const text = '¡Mirá mi video del evento! 🎬';
+  const text = '¡Mirá mi video del evento!';
 
   if (!canShareFiles()) {
     return false;
   }
 
-  const file = new File([blob], filename, { type: blob.type || 'video/webm' });
+  const mime = normalizeShareMimeType(blob.type);
+  const file = new File([blob], filename.replace(/\.[^.]+$/, '') + (
+    mime === 'video/mp4' ? '.mp4' : mime === 'video/ogg' ? '.ogg' : '.webm'
+  ), { type: mime });
   const payload = { files: [file], title, text };
 
   if (!navigator.canShare(payload)) {
     return false;
   }
 
-  await navigator.share(payload);
-  return true;
+  try {
+    await navigator.share(payload);
+    return true;
+  } catch (error) {
+    // Usuario canceló el sheet: no es error de app.
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error;
+    }
+    // NotAllowedError / permission: WebM u origen no permitido en ese Android.
+    if (error instanceof Error && (error.name === 'NotAllowedError' || /permission/i.test(error.message))) {
+      const denied = new Error(
+        'Este dispositivo no permite compartir este video desde el navegador. Usá Descargar y subilo desde la galería.',
+      );
+      denied.name = 'ShareNotAllowedError';
+      throw denied;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Matriz isTypeSupported para los MIME de la prueba de codec.
+ * @returns {{ preferred: 'vp9'|'vp8', preferredMime: string, support: Record<string, boolean> }}
+ */
+export function getRecorderMimeSupport() {
+  const preferred = RECORDER_VIDEO_CODEC === 'vp8' ? 'vp8' : 'vp9';
+  const preferredMime = RECORDER_MIME_BY_CODEC[preferred];
+  const support = {};
+
+  for (const mime of Object.values(RECORDER_MIME_BY_CODEC)) {
+    support[mime] = typeof MediaRecorder !== 'undefined'
+      && typeof MediaRecorder.isTypeSupported === 'function'
+      && MediaRecorder.isTypeSupported(mime);
+  }
+
+  return { preferred, preferredMime, support };
 }
 
 /**
  * Obtiene el MIME type soportado por MediaRecorder.
+ * Respeta RECORDER_VIDEO_CODEC; si el preferido no está soportado, cae al otro / genéricos.
  * @returns {string}
  */
 export function getSupportedMimeType() {
+  const { preferred, preferredMime, support } = getRecorderMimeSupport();
+
+  const preferredFirst = preferred === 'vp8'
+    ? [RECORDER_MIME_BY_CODEC.vp8, RECORDER_MIME_BY_CODEC.vp9]
+    : [RECORDER_MIME_BY_CODEC.vp9, RECORDER_MIME_BY_CODEC.vp8];
+
   const candidates = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
+    ...preferredFirst,
     'video/webm',
     'video/mp4',
   ];
 
+  console.groupCollapsed('[babysec][codec-test] mime selection');
+  console.log('RECORDER_VIDEO_CODEC (config):', preferred);
+  console.log('preferred mimeType:', preferredMime);
+  for (const [mime, ok] of Object.entries(support)) {
+    console.log(`MediaRecorder.isTypeSupported(${JSON.stringify(mime)}):`, ok);
+  }
+
+  let selected = '';
   for (const type of candidates) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      return type;
+    const ok = typeof MediaRecorder !== 'undefined'
+      && typeof MediaRecorder.isTypeSupported === 'function'
+      && MediaRecorder.isTypeSupported(type);
+    if (ok) {
+      selected = type;
+      break;
     }
   }
 
-  return '';
+  console.log('mimeType seleccionado:', selected || '(ninguno / default browser)');
+  console.groupEnd();
+
+  return selected;
+}
+
+/**
+ * Diagnostico de un Blob de video (solo consola; no altera el flujo).
+ * @param {{
+ *   blob: Blob,
+ *   mimeTypeRequested?: string|null,
+ *   mimeTypeRecorder?: string|null,
+ *   chunkCount?: number,
+ *   recordedElapsedMs?: number|null,
+ *   canvasWidth?: number|null,
+ *   canvasHeight?: number|null,
+ *   stage?: string,
+ * }} input
+ * @returns {Promise<object>}
+ */
+export async function diagnoseRecordingBlob(input) {
+  const {
+    blob,
+    mimeTypeRequested = null,
+    mimeTypeRecorder = null,
+    chunkCount = null,
+    recordedElapsedMs = null,
+    canvasWidth = null,
+    canvasHeight = null,
+    stage = 'post-blob',
+  } = input;
+
+  const report = {
+    stage,
+    mimeTypeRequested,
+    mimeTypeRecorder,
+    blobType: blob?.type ?? null,
+    blobSizeBytes: blob?.size ?? 0,
+    chunkCount,
+    recordedElapsedMs,
+    canvasWidth,
+    canvasHeight,
+    videoWidth: null,
+    videoHeight: null,
+    durationSec: null,
+    durationRaw: null,
+    durationStatus: 'unknown',
+    bitrateEstimatedBps: null,
+    problemStage: null,
+  };
+
+  console.groupCollapsed(`[babysec][video-diag] ${stage}`);
+  console.log('mimeTypeRequested:', mimeTypeRequested);
+  console.log('mediaRecorder.mimeType:', mimeTypeRecorder);
+  console.log('blob.type:', report.blobType);
+  console.log('blob.size (bytes):', report.blobSizeBytes);
+  console.log('chunkCount:', chunkCount);
+  console.log('recordedElapsedMs (app timer):', recordedElapsedMs);
+  console.log('canvas resolution:', canvasWidth, 'x', canvasHeight);
+
+  if (!blob || blob.size <= 0) {
+    report.durationStatus = 'empty-blob';
+    report.problemStage = 'blob-construction';
+    console.warn('PROBLEMA: Blob vacio o ausente en etapa', report.problemStage);
+    console.groupEnd();
+    return report;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const meta = await new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+
+      const finish = (payload) => {
+        video.removeAttribute('src');
+        video.load();
+        resolve(payload);
+      };
+
+      video.addEventListener('loadedmetadata', () => {
+        finish({
+          duration: video.duration,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState,
+          event: 'loadedmetadata',
+        });
+      });
+
+      video.addEventListener('error', () => {
+        finish({
+          duration: NaN,
+          videoWidth: 0,
+          videoHeight: 0,
+          readyState: video.readyState,
+          event: 'error',
+          mediaError: video.error ? {
+            code: video.error.code,
+            message: video.error.message,
+          } : null,
+        });
+      });
+
+      // Timeout por si metadata nunca llega.
+      window.setTimeout(() => {
+        finish({
+          duration: video.duration,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState,
+          event: 'timeout',
+        });
+      }, 4000);
+
+      video.src = objectUrl;
+    });
+
+    report.durationRaw = meta.duration;
+    report.videoWidth = meta.videoWidth || canvasWidth;
+    report.videoHeight = meta.videoHeight || canvasHeight;
+
+    if (Number.isNaN(meta.duration)) {
+      report.durationStatus = 'NaN';
+      report.problemStage = 'webm-metadata-duration';
+    } else if (meta.duration === Infinity) {
+      report.durationStatus = 'Infinity';
+      report.problemStage = 'webm-metadata-duration';
+    } else if (!meta.duration || meta.duration <= 0) {
+      report.durationStatus = 'zero-or-missing';
+      report.problemStage = 'webm-metadata-duration';
+    } else {
+      report.durationStatus = 'ok';
+      report.durationSec = meta.duration;
+    }
+
+    const durationForBitrate =
+      typeof report.durationSec === 'number' && report.durationSec > 0
+        ? report.durationSec
+        : (typeof recordedElapsedMs === 'number' && recordedElapsedMs > 0
+          ? recordedElapsedMs / 1000
+          : null);
+
+    if (durationForBitrate) {
+      report.bitrateEstimatedBps = Math.round((blob.size * 8) / durationForBitrate);
+    }
+
+    console.log('video element event:', meta.event);
+    console.log('video.duration (raw):', meta.duration);
+    console.log('durationStatus:', report.durationStatus);
+    console.log('durationSec (parsed):', report.durationSec);
+    console.log('video resolution:', report.videoWidth, 'x', report.videoHeight);
+    console.log('bitrate estimado (bps):', report.bitrateEstimatedBps);
+    console.log('bitrate estimado (kbps):',
+      report.bitrateEstimatedBps != null
+        ? Math.round(report.bitrateEstimatedBps / 1000)
+        : null);
+
+    if (report.problemStage) {
+      console.warn(
+        `PROBLEMA: duration=${String(meta.duration)} detectado en etapa "${report.problemStage}". ` +
+        'Chrome MediaRecorder WebM suele omitir Duration/Cues; Gallery/Instagram fallan aunque Chrome reproduzca.',
+      );
+    } else {
+      console.log('Duration metadata OK segun <video>.');
+    }
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    console.groupEnd();
+  }
+
+  // Exponer ultimo reporte para inspeccion manual en DevTools.
+  globalThis.__BABYSEC_LAST_VIDEO_DIAG__ = report;
+  return report;
 }
