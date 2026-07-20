@@ -1,0 +1,7 @@
+CONTRSTRUCCION/
+assets/
+uploads/
+node_modules/
+*.webm
+*.mp4
+*.png

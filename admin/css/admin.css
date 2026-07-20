@@ -1,0 +1,367 @@
+/**
+ * Panel Admin — babysec-selfie
+ */
+
+@import url('../../css/button.css');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #e5f2f2;
+  --surface: #ffffff;
+  --surface-2: #e5f2f2;
+  --border: #c5dcdc;
+  --primary: #23135f;
+  --primary-hover: #1a0e48;
+  --accent: #00aeef;
+  --text: #23135f;
+  --text-muted: #5c5278;
+  --error: #f15929;
+  --success: #00aeef;
+  --radius: 12px;
+
+  /* Button tokens → paleta admin */
+  --btn-primary-bg: var(--primary);
+  --btn-primary-bg-hover: var(--primary-hover);
+  --btn-primary-bg-active: #160b3d;
+  --btn-secondary-bg: var(--accent);
+  --btn-secondary-bg-hover: #0096ce;
+  --btn-secondary-bg-active: #007eae;
+  --btn-ghost-bg: var(--surface);
+  --btn-ghost-color: var(--text-muted);
+  --btn-height: 40px;
+  --btn-pad-x: 16px;
+  --btn-font-size: 0.875rem;
+}
+
+body.admin-body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+body.admin-body--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Login ── */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  padding: 32px 28px;
+}
+
+.login-card__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.login-card__subtitle {
+  color: var(--text-muted);
+  margin: 4px 0 24px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Header ── */
+.admin-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-header__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-header__title {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.admin-header__subtitle {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.admin-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Stats ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-card__label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card__value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-card__value--sm {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-box {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* ── Form ── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+}
+
+/* Ghost admin: un poco más discreto sobre header */
+.admin-header .btn--ghost {
+  --btn-ghost-bg: transparent;
+  --btn-ghost-bg-hover: var(--surface-2);
+  --btn-ghost-bg-active: var(--border);
+  --btn-shadow: var(--border);
+}
+
+/* ── Table ── */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table th {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(0, 174, 239, 0.06);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.link {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge--muted {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.badge--registered {
+  background: rgba(0, 174, 239, 0.14);
+  color: var(--accent);
+}
+
+.badge--uploaded {
+  background: rgba(35, 19, 95, 0.12);
+  color: var(--primary);
+}
+
+.badge--failed {
+  background: rgba(241, 89, 41, 0.14);
+  color: var(--error);
+}
+
+.filter-count {
+  padding: 12px 20px 16px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state__hint {
+  margin-top: 8px;
+  font-size: 0.875rem;
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+.alert--error {
+  background: rgba(241, 89, 41, 0.12);
+  color: var(--error);
+  border: 1px solid rgba(241, 89, 41, 0.28);
+}
+
+/* ── Mobile table ── */
+@media (max-width: 768px) {
+  .admin-header__inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tbody tr {
+    display: block;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border: none;
+    padding: 8px 16px;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .action-group {
+    justify-content: flex-end;
+  }
+}

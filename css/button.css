@@ -1,0 +1,163 @@
+/**
+ * Button - componente reutilizable babysec-selfie
+ * Pill + sombra perimetral dura (sin blur).
+ */
+
+:root {
+  /* Tamanos */
+  --btn-height: 52px;
+  --btn-pad-x: 24px;
+  --btn-font-size: 1rem;
+  --btn-font-weight: 600;
+  --btn-radius: 9999px;
+  --btn-shadow-offset: 4px;
+  --btn-shadow-offset-active: 1px;
+  --btn-press-distance: 3px;
+
+  /* Colores base (se sobreescriben por variante) */
+  --btn-bg: #23135f;
+  --btn-bg-hover: #1a0e48;
+  --btn-bg-active: #160b3d;
+  --btn-color: #ffffff;
+  --btn-shadow: color-mix(in srgb, var(--btn-bg) 72%, #000000);
+
+  /* Variantes - tokens */
+  --btn-primary-bg: #23135f;
+  --btn-primary-bg-hover: #1a0e48;
+  --btn-primary-bg-active: #160b3d;
+
+  --btn-secondary-bg: #00aeef;
+  --btn-secondary-bg-hover: #0096ce;
+  --btn-secondary-bg-active: #007eae;
+
+  --btn-accent-bg: #f15929;
+  --btn-accent-bg-hover: #d94a1f;
+  --btn-accent-bg-active: #c03f18;
+
+  --btn-ghost-bg: #e5f2f2;
+  --btn-ghost-bg-hover: #d5e8e8;
+  --btn-ghost-bg-active: #c5dcdc;
+  --btn-ghost-color: #23135f;
+}
+
+.btn {
+  --_bg: var(--btn-bg);
+  --_shadow: var(--btn-shadow);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--btn-height);
+  padding: 0 var(--btn-pad-x);
+  border: none;
+  border-radius: var(--btn-radius);
+  background: var(--_bg);
+  color: var(--btn-color);
+  font-family: inherit;
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Reserva espacio para que la linea de sombra no se recorte */
+  margin-bottom: var(--btn-shadow-offset);
+  /* Linea de sombra: contorno solido desplazado, sin blur */
+  box-shadow: 0 var(--btn-shadow-offset) 0 0 var(--_shadow);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.1s ease,
+    transform 0.1s ease;
+}
+
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--btn-bg-hover);
+}
+
+.btn:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--btn-bg-active);
+  transform: translateY(var(--btn-press-distance));
+  box-shadow: 0 var(--btn-shadow-offset-active) 0 0 var(--_shadow);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: 0 2px 0 0 var(--_shadow);
+  transform: none;
+  pointer-events: none;
+}
+
+.btn:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--_bg) 45%, #ffffff);
+  outline-offset: 3px;
+}
+
+/* Variantes */
+
+.btn--primary {
+  --btn-bg: var(--btn-primary-bg);
+  --btn-bg-hover: var(--btn-primary-bg-hover);
+  --btn-bg-active: var(--btn-primary-bg-active);
+  --btn-color: #ffffff;
+  --btn-shadow: color-mix(in srgb, var(--btn-primary-bg) 72%, #000000);
+}
+
+.btn--secondary {
+  --btn-bg: var(--btn-secondary-bg);
+  --btn-bg-hover: var(--btn-secondary-bg-hover);
+  --btn-bg-active: var(--btn-secondary-bg-active);
+  --btn-color: #ffffff;
+  --btn-shadow: color-mix(in srgb, var(--btn-secondary-bg) 72%, #000000);
+}
+
+.btn--accent {
+  --btn-bg: var(--btn-accent-bg);
+  --btn-bg-hover: var(--btn-accent-bg-hover);
+  --btn-bg-active: var(--btn-accent-bg-active);
+  --btn-color: #ffffff;
+  --btn-shadow: color-mix(in srgb, var(--btn-accent-bg) 72%, #000000);
+}
+
+.btn--ghost {
+  --btn-bg: var(--btn-ghost-bg);
+  --btn-bg-hover: var(--btn-ghost-bg-hover);
+  --btn-bg-active: var(--btn-ghost-bg-active);
+  --btn-color: var(--btn-ghost-color);
+  --btn-shadow: color-mix(in srgb, var(--btn-ghost-bg) 65%, #000000);
+}
+
+/* Tamanos */
+
+.btn--large {
+  --btn-height: 60px;
+  --btn-pad-x: 28px;
+  --btn-font-size: 1.125rem;
+}
+
+.btn--sm {
+  --btn-height: 36px;
+  --btn-pad-x: 14px;
+  --btn-font-size: 0.875rem;
+  --btn-shadow-offset: 3px;
+  --btn-press-distance: 2px;
+}
+
+.btn--xs {
+  --btn-height: 32px;
+  --btn-pad-x: 10px;
+  --btn-font-size: 0.8125rem;
+  --btn-shadow-offset: 2px;
+  --btn-shadow-offset-active: 0px;
+  --btn-press-distance: 2px;
+}
+
+.btn--block {
+  width: 100%;
+}

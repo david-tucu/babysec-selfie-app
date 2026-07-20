@@ -1,0 +1,440 @@
+/**
+ * babysec-selfie — Mobile First
+ * Diseño vertical 9:16, sin scroll, botones grandes.
+ */
+
+@import url('button.css');
+
+/* ── Reset & base ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #e5f2f2;
+  --color-primary: #23135f;
+  --color-primary-hover: #1a0e48;
+  --color-secondary: #00aeef;
+  --color-accent: #f15929;
+  --color-text: #23135f;
+  --color-text-muted: #5c5278;
+  --radius: 16px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Button tokens → paleta de la app */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-bg-hover: var(--color-primary-hover);
+  --btn-primary-bg-active: #160b3d;
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-bg-hover: #0096ce;
+  --btn-secondary-bg-active: #007eae;
+  --btn-accent-bg: var(--color-accent);
+  --btn-ghost-bg: var(--color-surface);
+  --btn-ghost-color: var(--color-text);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "VAGRounded", system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+@font-face {
+  font-family: "VAGRounded";
+  src: url("../assets/fonts/VAGRounded_BT_Regular.ttf") format("truetype");
+  font-weight: 700;
+  font-style: bold;
+}
+
+
+
+.hidden {
+  display: none !important;
+}
+
+/* ── App shell ── */
+.app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
+  background: var(--color-bg);
+}
+
+.screen--landing,
+.screen--registration,
+.screen--finished,
+.screen--error {
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface) 100%);
+}
+
+.screen__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  max-width: 360px;
+  width: 100%;
+}
+
+.screen__content--scroll {
+  max-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+
+/* ── Registration form ── */
+.registration-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.form-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid #c5dcdc;
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input--uppercase {
+  text-transform: uppercase;
+}
+
+.form-input--uppercase::placeholder {
+  text-transform: none;
+}
+
+.form-input:focus {
+  border-color: var(--color-secondary);
+}
+
+.form-input--error {
+  border-color: var(--color-accent);
+}
+
+.form-error {
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+}
+
+.screen--registration {
+  justify-content: flex-start;
+  padding-top: calc(24px + var(--safe-top));
+}
+
+/* ── Branding ── */
+.brand-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.title--sm {
+  font-size: 1.4rem;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Layout de botones en pantallas de la app (no aplica a record/stop) */
+.screen .btn:not(.btn--record):not(.btn--stop) {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* ── Record / Stop (controles circulares; fuera del Button pill) ── */
+.camera-controls {
+  position: absolute;
+  bottom: calc(32px + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.btn--record {
+  width: 76px;
+  height: 76px;
+  min-height: unset;
+  max-width: unset;
+  border-radius: 50%;
+  background: rgba(35, 19, 95, 0.15);
+  border: 4px solid #fff;
+  padding: 0;
+  margin-bottom: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn--record:hover:not(:disabled),
+.btn--record:active:not(:disabled) {
+  background: rgba(35, 19, 95, 0.15);
+  box-shadow: none;
+  transform: none;
+}
+
+.btn--record__inner {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.btn--stop {
+  width: 76px;
+  height: 76px;
+  min-height: unset;
+  max-width: unset;
+  border-radius: 50%;
+  background: rgba(35, 19, 95, 0.15);
+  border: 4px solid #fff;
+  padding: 0;
+  margin-bottom: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn--stop:hover:not(:disabled),
+.btn--stop:active:not(:disabled) {
+  background: rgba(35, 19, 95, 0.15);
+  box-shadow: none;
+  transform: none;
+}
+
+.btn--stop__inner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--color-accent);
+  margin: 0 auto;
+}
+
+/* ── Canvas preview ── */
+.screen--camera {
+  padding: 0;
+  justify-content: flex-start;
+}
+
+.canvas-container {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+}
+
+.live-canvas {
+  max-height: 100%;
+  max-width: 100%;
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ── Live indicators (solo pantalla; no se graban en el canvas) ── */
+.countdown-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(35, 19, 95, 0.55);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rec-display {
+  position: absolute;
+  top: calc(16px + var(--safe-top));
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(35, 19, 95, 0.72);
+  padding: 8px 14px;
+  border-radius: 999px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Preview screen ── */
+.screen--preview {
+  padding: 0;
+}
+
+.preview-video {
+  flex: 1;
+  width: 100%;
+  max-height: calc(100% - 120px);
+  object-fit: contain;
+  background: #000;
+}
+
+.preview-controls {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  width: 100%;
+  background: var(--color-surface);
+}
+
+.preview-controls .btn {
+  flex: 1;
+  max-width: none;
+}
+
+/* ── Upload overlay ── */
+.upload-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(35, 19, 95, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: #fff;
+}
+
+.upload-overlay__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--color-secondary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Finished & error ── */
+.success-icon,
+.error-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.success-icon {
+  background: rgba(0, 174, 239, 0.15);
+  color: var(--color-secondary);
+}
+
+.error-icon {
+  background: rgba(241, 89, 41, 0.15);
+  color: var(--color-accent);
+}
+
+.finished-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.share-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  max-width: 300px;
+}
+
+/* ── Desktop fallback ── */
+@media (min-width: 768px) {
+  .canvas-container,
+  .preview-video {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+}

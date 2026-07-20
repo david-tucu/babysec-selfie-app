@@ -1,0 +1,9 @@
+uploads/videos/*
+!uploads/videos/.gitkeep
+!uploads/videos/index.php
+admin/config.php
+data/database.sqlite
+data/database.sqlite-journal
+data/database.sqlite-wal
+data/database.sqlite-shm
+.DS_Store
