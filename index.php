@@ -15,12 +15,43 @@
 <body>
   <div id="app" class="app">
 
-    <!-- LANDING -->
-    <section id="screen-landing" class="screen screen--landing">
-      <div class="screen__content">
+    <!-- PORTADA -->
+    <section id="screen-landing" class="screen screen--landing screen--landing-cover">
+      <div id="landing" class="landing" aria-label="Portada">
+        <div id="landing-stage" class="landing__stage">
+          <img class="landing__bg" src="assets/fondo.png" alt="" decoding="async">
+
+          <div class="landing__pin" style="--x: 540; --y: 290">
+            <img class="landing__art landing__art--1" src="assets/p1_1.png" alt="" decoding="async">
+          </div>
+          <div class="landing__pin" style="--x: 540; --y: 540">
+            <img class="landing__art landing__art--2" src="assets/p1_2.png" alt="" decoding="async">
+          </div>
+          <div class="landing__pin" style="--x: 540; --y: 920">
+            <img class="landing__art landing__art--3" src="assets/p1_3.png" alt="" decoding="async">
+          </div>
+          <div class="landing__pin" style="--x: 540; --y: 1330">
+            <img class="landing__art landing__art--4" src="assets/p1_4.png" alt="" decoding="async">
+          </div>
+          <div class="landing__pin landing__pin--cta" style="--x: 540; --y: 1590">
+            <button id="btn-start" type="button" class="btn btn--primary btn--large landing__cta">
+              COMENZAR
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FORMULARIO -->
+    <section id="screen-registration" class="screen screen--registration hidden">
+      <div class="screen__content screen__content--scroll">
+        <button id="btn-back-home" type="button" class="registration-back" aria-label="Volver al inicio">
+          <span class="registration-back__icon" aria-hidden="true">←</span>
+        </button>
+
         <img src="assets/logo.png" alt="Logo del evento" class="brand-logo">
         <h1 class="title" style="display: none;">babysec-selfie</h1>
-        <p class="subtitle">Completá tus datos para participar en el sorteo.</p>
+        <p class="subtitle">Completá tus datos para participar.</p>
 
         <form id="registration-form" class="registration-form" novalidate>
           <div class="form-field">

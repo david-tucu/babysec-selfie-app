@@ -82,11 +82,15 @@ class BabysecSelfieApp {
   /** @type {boolean} */
   #registering;
 
+  /** @type {boolean} */
+  #starting = false;
+
   async init() {
     await this.renderer.loadAssets();
     this.ui.mountCanvas(this.renderer.getCanvas());
     this.ui.bindHandlers({
       onStart: () => this.#handleStart(),
+      onBackHome: () => this.#handleBackHome(),
       onRegistrationSubmit: () => this.#handleRegistrationSubmit(),
       onRecord: () => this.#handleRecord(),
       onStop: () => this.#handleStop(),
@@ -101,7 +105,40 @@ class BabysecSelfieApp {
       this.ui.showState(state);
     });
 
+    // Historial interno: en Android "atras" vuelve a la portada en vez de salir.
+    this.#setupHistoryNavigation();
+
+    // Estado inicial ya es LANDING: mostrar y animar entrada.
     this.ui.showState(AppState.LANDING);
+  }
+
+  #setupHistoryNavigation() {
+    history.replaceState({ app: 'babysec', screen: 'landing' }, '');
+
+    window.addEventListener('popstate', (event) => {
+      const screen = event.state?.screen;
+
+      if (screen === 'registration') {
+        this.stateManager.setState(AppState.REGISTRATION);
+        return;
+      }
+
+      // Atras desde formulario → portada, sin salir de la pagina.
+      if (this.stateManager.is(AppState.REGISTRATION)) {
+        this.#resetSessionToHome();
+        this.stateManager.setState(AppState.LANDING);
+      }
+    });
+  }
+
+  #resetSessionToHome() {
+    this.ui.clearRegistrationErrors();
+    this.#participantUuid = null;
+    this.#userData = null;
+    this.#lastBlob = null;
+    this.recorder.cancel();
+    this.preview.clear();
+    this.ui.updateLiveIndicators({});
   }
 
   /**
@@ -120,13 +157,44 @@ class BabysecSelfieApp {
   }
 
   /**
-   * Landing → formulario de registro.
+   * Portada → formulario (tras animacion de salida).
    */
-  #handleStart() {
-    this.ui.clearRegistrationErrors();
-    this.#participantUuid = null;
-    this.#userData = null;
-    this.stateManager.setState(AppState.REGISTRATION);
+  async #handleStart() {
+    if (!this.stateManager.is(AppState.LANDING) || this.#starting) {
+      return;
+    }
+
+    this.#starting = true;
+
+    try {
+      await this.ui.playLandingExit();
+      this.ui.clearRegistrationErrors();
+      this.#participantUuid = null;
+      this.#userData = null;
+      history.pushState({ app: 'babysec', screen: 'registration' }, '');
+      this.stateManager.setState(AppState.REGISTRATION);
+    } finally {
+      this.#starting = false;
+    }
+  }
+
+  /**
+   * Formulario → portada (boton "Volver al inicio").
+   */
+  #handleBackHome() {
+    if (!this.stateManager.is(AppState.REGISTRATION)) {
+      return;
+    }
+
+    this.#resetSessionToHome();
+
+    if (history.state?.screen === 'registration') {
+      history.back();
+      return;
+    }
+
+    history.replaceState({ app: 'babysec', screen: 'landing' }, '');
+    this.stateManager.setState(AppState.LANDING);
   }
 
   /**
@@ -315,7 +383,7 @@ class BabysecSelfieApp {
       return;
     }
 
-    // Volver al formulario (landing).
+    // Volver a la portada.
     this.stateManager.setState(AppState.LANDING);
   }
 

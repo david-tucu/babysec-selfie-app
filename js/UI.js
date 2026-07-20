@@ -37,6 +37,8 @@ export class UI {
       'screen-preview',
       'screen-finished',
       'screen-error',
+      'landing',
+      'landing-stage',
       'canvas-container',
       'preview-video',
       'registration-form',
@@ -49,6 +51,7 @@ export class UI {
       'error-localidad',
       'error-email',
       'btn-start',
+      'btn-back-home',
       'btn-continue',
       'btn-record',
       'btn-stop',
@@ -72,6 +75,30 @@ export class UI {
         this.#el[id] = element;
       }
     }
+
+    this.#setupLandingScale();
+  }
+
+  /** @type {(() => void)|null} */
+  #landingScaleCleanup = null;
+
+  /**
+   * Escala el lienzo 1080x1920 para caber en el viewport.
+   */
+  #setupLandingScale() {
+    const stage = this.#el['landing-stage'];
+    if (!stage) {
+      return;
+    }
+
+    const update = () => {
+      const scale = Math.min(window.innerWidth / 1080, window.innerHeight / 1920);
+      stage.style.setProperty('--landing-scale', String(scale));
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    this.#landingScaleCleanup = () => window.removeEventListener('resize', update);
   }
 
   /**
@@ -106,10 +133,9 @@ export class UI {
    * @param {string} state
    */
   showState(state) {
-    // El formulario vive en screen-landing (ya no hay screen-registration).
     const screens = {
       [AppState.LANDING]: 'screen-landing',
-      [AppState.REGISTRATION]: 'screen-landing',
+      [AppState.REGISTRATION]: 'screen-registration',
       [AppState.CAMERA]: 'screen-camera',
       [AppState.COUNTDOWN]: 'screen-camera',
       [AppState.RECORDING]: 'screen-camera',
@@ -132,6 +158,10 @@ export class UI {
       this.#el['upload-overlay']?.classList.add('hidden');
     }
 
+    if (state === AppState.LANDING) {
+      this.playLandingEnter();
+    }
+
     const isLive = state === AppState.CAMERA;
     const isRecording = state === AppState.RECORDING;
     const isRecordingPhase = state === AppState.COUNTDOWN || isRecording;
@@ -142,6 +172,98 @@ export class UI {
     this.#setHidden('countdown-display', !isRecordingPhase);
     this.#setHidden('rec-display', !isRecording);
   }
+
+  /**
+   * Animacion de entrada de la portada + respiracion idle.
+   */
+  playLandingEnter() {
+    const root = this.#el.landing;
+    const cta = this.#el['btn-start'];
+    if (!root) {
+      return;
+    }
+
+    if (cta instanceof HTMLButtonElement) {
+      cta.disabled = false;
+    }
+
+    this.#clearLandingInlineStyles(root);
+    root.classList.remove('landing--exit', 'landing--idle', 'landing--enter');
+    // Forzar reflow para reiniciar animaciones.
+    void root.offsetWidth;
+    root.classList.add('landing--enter');
+
+    window.clearTimeout(this.#landingEnterTimer);
+    this.#landingEnterTimer = window.setTimeout(() => {
+      root.classList.remove('landing--enter');
+      root.classList.add('landing--idle');
+    }, 1600);
+  }
+
+  /**
+   * Animacion de salida de la portada. Resuelve al terminar.
+   * @returns {Promise<void>}
+   */
+  playLandingExit() {
+    const root = this.#el.landing;
+    const cta = this.#el['btn-start'];
+
+    if (!root) {
+      return Promise.resolve();
+    }
+
+    window.clearTimeout(this.#landingEnterTimer);
+
+    if (cta instanceof HTMLButtonElement) {
+      cta.disabled = true;
+    }
+
+    // Congelar opacity/transform actuales (p. ej. mid-breath) para evitar salto.
+    this.#freezeLandingLayers(root);
+
+    root.classList.remove('landing--enter');
+    root.classList.add('landing--exit');
+    root.classList.remove('landing--idle');
+
+    return new Promise((resolve) => {
+      window.clearTimeout(this.#landingExitTimer);
+      this.#landingExitTimer = window.setTimeout(() => {
+        this.#clearLandingInlineStyles(root);
+        resolve();
+      }, 950);
+    });
+  }
+
+  /**
+   * @param {HTMLElement} root
+   */
+  #freezeLandingLayers(root) {
+    root.querySelectorAll('.landing__art, .landing__cta').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const style = getComputedStyle(el);
+      el.style.opacity = style.opacity;
+      el.style.transform = style.transform === 'none' ? 'none' : style.transform;
+    });
+    // Aplicar estilos congelados antes de cambiar clases/animaciones de salida.
+    void root.offsetWidth;
+  }
+
+  /**
+   * @param {HTMLElement} root
+   */
+  #clearLandingInlineStyles(root) {
+    root.querySelectorAll('.landing__art, .landing__cta').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.style.opacity = '';
+      el.style.transform = '';
+    });
+  }
+
+  /** @type {number|undefined} */
+  #landingEnterTimer;
+
+  /** @type {number|undefined} */
+  #landingExitTimer;
 
   /**
    * Lee los valores del formulario de registro.
@@ -331,6 +453,7 @@ export class UI {
    * Registra handlers de interacción del usuario.
    * @param {{
    *   onStart?: () => void,
+   *   onBackHome?: () => void,
    *   onRegistrationSubmit?: () => void,
    *   onRecord?: () => void,
    *   onStop?: () => void,
@@ -343,6 +466,7 @@ export class UI {
    */
   bindHandlers(handlers) {
     this.#bindClick('btn-start', handlers.onStart);
+    this.#bindClick('btn-back-home', handlers.onBackHome);
     this.#bindClick('btn-record', handlers.onRecord);
     this.#bindClick('btn-stop', handlers.onStop);
     this.#bindClick('btn-retry', handlers.onRetry);
