@@ -4,7 +4,18 @@
  */
 
 import { AppState } from './StateManager.js';
-import { canShareFiles } from './Utils.js';
+import { canShareFiles, RECORD_DURATION_SECONDS } from './Utils.js';
+
+/** Mensajes rotativos sobre la vista previa en vivo (cada 10s). */
+const CAMERA_PROMPTS = [
+  'En 20 segundos contanos eso que NADIE TE DIJO ACERCA DE LA CRIANZA',
+  'Por ejemplo: “Nadie me dijo que iba a dormir 3 horas”',
+  'En 20 segundos contanos eso que NADIE TE DIJO ACERCA DE LA CRIANZA',
+  'Por ejemplo: “Nadie me dijo que lleve siempre un chupete de backup”',
+];
+
+const CAMERA_PROMPT_INTERVAL_MS = 10_000;
+const CAMERA_PROMPT_FADE_MS = 450;
 
 export class UI {
   /**
@@ -25,6 +36,15 @@ export class UI {
 
   /** @type {Record<string, HTMLElement>} */
   #el = {};
+
+  /** @type {ReturnType<typeof setInterval>|null} */
+  #cameraPromptTimer = null;
+
+  /** @type {ReturnType<typeof setTimeout>|null} */
+  #cameraPromptFadeTimer = null;
+
+  /** @type {number} */
+  #cameraPromptIndex = 0;
 
   /**
    * Referencia a elementos del DOM.
@@ -69,6 +89,9 @@ export class UI {
       'share-hint',
       'countdown-display',
       'rec-display',
+      'camera-prompt',
+      'camera-prompt-text',
+      'btn-stop-seconds',
     ];
 
     for (const id of ids) {
@@ -165,14 +188,96 @@ export class UI {
     }
 
     const isLive = state === AppState.CAMERA;
+    const isCountdown = state === AppState.COUNTDOWN;
     const isRecording = state === AppState.RECORDING;
-    const isRecordingPhase = state === AppState.COUNTDOWN || isRecording;
 
     this.#setDisabled('btn-record', !isLive);
     this.#setHidden('btn-record', !isLive);
     this.#setHidden('btn-stop', !isRecording);
-    this.#setHidden('countdown-display', !isRecordingPhase);
+    this.#setHidden('countdown-display', !isCountdown);
     this.#setHidden('rec-display', !isRecording);
+    this.#setHidden('camera-prompt', !isLive);
+
+    if (isLive) {
+      this.#startCameraPrompts();
+    } else {
+      this.#stopCameraPrompts();
+    }
+
+    if (isRecording) {
+      this.#setStopSeconds(RECORD_DURATION_SECONDS);
+    }
+  }
+
+  /**
+   * Alterna mensajes sobre la vista previa en vivo (fade out/in cada 10s).
+   */
+  #startCameraPrompts() {
+    this.#stopCameraPrompts();
+    this.#cameraPromptIndex = 0;
+    this.#setCameraPromptText(CAMERA_PROMPTS[0], { instant: true });
+
+    this.#cameraPromptTimer = setInterval(() => {
+      this.#cameraPromptIndex = (this.#cameraPromptIndex + 1) % CAMERA_PROMPTS.length;
+      this.#setCameraPromptText(CAMERA_PROMPTS[this.#cameraPromptIndex]);
+    }, CAMERA_PROMPT_INTERVAL_MS);
+  }
+
+  #stopCameraPrompts() {
+    if (this.#cameraPromptTimer != null) {
+      clearInterval(this.#cameraPromptTimer);
+      this.#cameraPromptTimer = null;
+    }
+    if (this.#cameraPromptFadeTimer != null) {
+      clearTimeout(this.#cameraPromptFadeTimer);
+      this.#cameraPromptFadeTimer = null;
+    }
+
+    const prompt = this.#el['camera-prompt'];
+    prompt?.classList.remove('is-fading');
+  }
+
+  /**
+   * @param {string} text
+   * @param {{ instant?: boolean }} [options]
+   */
+  #setCameraPromptText(text, options = {}) {
+    const prompt = this.#el['camera-prompt'];
+    const textEl = this.#el['camera-prompt-text'];
+    if (!prompt || !textEl) {
+      return;
+    }
+
+    if (this.#cameraPromptFadeTimer != null) {
+      clearTimeout(this.#cameraPromptFadeTimer);
+      this.#cameraPromptFadeTimer = null;
+    }
+
+    if (options.instant) {
+      prompt.classList.remove('is-fading');
+      textEl.textContent = text;
+      return;
+    }
+
+    prompt.classList.add('is-fading');
+    this.#cameraPromptFadeTimer = setTimeout(() => {
+      textEl.textContent = text;
+      prompt.classList.remove('is-fading');
+      this.#cameraPromptFadeTimer = null;
+    }, CAMERA_PROMPT_FADE_MS);
+  }
+
+  /**
+   * @param {number|null|undefined} seconds
+   */
+  #setStopSeconds(seconds) {
+    const el = this.#el['btn-stop-seconds'];
+    if (!el) {
+      return;
+    }
+    if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+      el.textContent = String(Math.max(0, Math.ceil(seconds)));
+    }
   }
 
   /**
@@ -354,7 +459,7 @@ export class UI {
   }
 
   /**
-   * Actualiza indicadores DOM (countdown / REC / tiempo).
+   * Actualiza indicadores DOM (countdown 3...2...1... / REC / segundos en stop).
    * Van solo en pantalla; el canvas grabado no los incluye.
    * @param {{ countdown?: number|null, remainingSeconds?: number|null, showRec?: boolean }} payload
    */
@@ -366,13 +471,14 @@ export class UI {
       if (payload.countdown != null && payload.countdown > 0) {
         countdownEl.textContent = String(payload.countdown);
         countdownEl.classList.remove('hidden');
-      } else if (payload.showRec && payload.remainingSeconds != null) {
-        countdownEl.textContent = String(payload.remainingSeconds);
-        countdownEl.classList.remove('hidden');
       } else {
         countdownEl.textContent = '';
         countdownEl.classList.add('hidden');
       }
+    }
+
+    if (payload.showRec && payload.remainingSeconds != null) {
+      this.#setStopSeconds(payload.remainingSeconds);
     }
 
     if (recEl) {

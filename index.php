@@ -89,6 +89,10 @@
     <section id="screen-camera" class="screen screen--camera hidden">
       <div id="canvas-container" class="canvas-container" aria-label="Vista previa en vivo"></div>
 
+      <div id="camera-prompt" class="camera-prompt hidden" aria-live="polite">
+        <p id="camera-prompt-text" class="camera-prompt__text"></p>
+      </div>
+
       <div id="countdown-display" class="countdown-display hidden" aria-live="polite"></div>
       <div id="rec-display" class="rec-display hidden" aria-live="polite">
         <span class="rec-dot"></span> REC
@@ -99,7 +103,7 @@
           <span class="btn--record__inner"></span>
         </button>
         <button id="btn-stop" type="button" class="btn btn--stop hidden" aria-label="Detener grabación">
-          <span class="btn--stop__inner"></span>
+          <span id="btn-stop-seconds" class="btn--stop__seconds">20</span>
         </button>
       </div>
     </section>

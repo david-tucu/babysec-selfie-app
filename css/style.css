@@ -311,6 +311,19 @@ body {
   margin: 0 auto;
 }
 
+.btn--stop__seconds {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-accent, #f15929);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Canvas preview ── */
 .screen--camera {
   padding: 0;
@@ -335,18 +348,53 @@ body {
   object-fit: contain;
 }
 
+/* ── Prompts sobre vista previa en vivo (solo CAMERA) ── */
+.camera-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 23%;
+  transform: translateX(-50%);
+  width: 240px;
+  z-index: 4;
+  pointer-events: none;
+  text-align: center;
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  box-sizing: border-box;
+}
+
+.camera-prompt.is-fading {
+  opacity: 0;
+}
+
+.camera-prompt__text {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.85rem 1.1rem;
+  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(35, 19, 95, 0.65);
+  background: rgba(35, 19, 95, 0.55);
+  border-radius: 16px;
+}
+
 /* ── Live indicators (solo pantalla; no se graban en el canvas) ── */
 .countdown-display {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8rem;
+  font-size: clamp(4.5rem, 22vw, 8rem);
   font-weight: 900;
   color: #fff;
   text-shadow: 0 4px 24px rgba(35, 19, 95, 0.55);
   pointer-events: none;
   z-index: 5;
+  letter-spacing: 0.02em;
 }
 
 .rec-display {
