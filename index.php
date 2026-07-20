@@ -138,6 +138,12 @@
     <!-- FINALIZADO -->
     <section id="screen-finished" class="screen screen--finished hidden">
       <div class="screen__content">
+        <img
+          class="finished-logo"
+          src="assets/p1_2.png"
+          alt="Logo del evento"
+          decoding="async"
+        >
         <div class="success-icon">✓</div>
         <h2 class="title title--sm">¡Listo!</h2>
         <p id="finished-message" class="subtitle">Tu video fue guardado correctamente.</p>

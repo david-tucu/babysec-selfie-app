@@ -72,7 +72,11 @@ $totalCount = count($registrations);
             autocomplete="off"
           >
         </div>
-        <button id="btn-export" type="button" class="btn btn--secondary btn--sm">Exportar CSV</button>
+        <div class="toolbar-actions">
+          <button id="btn-export" type="button" class="btn btn--secondary btn--sm">Exportar CSV</button>
+          <a id="btn-export-all" href="export-all.php" class="btn btn--primary btn--sm">Exportar todo</a>
+          <button id="btn-purge" type="button" class="btn btn--danger btn--sm">Vaciar</button>
+        </div>
       </div>
 
       <?php if ($totalCount === 0): ?>

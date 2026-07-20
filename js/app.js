@@ -147,6 +147,27 @@ class BabysecSelfieApp {
     this.recorder.cancel();
     this.preview.clear();
     this.ui.updateLiveIndicators({});
+    this.#releaseCamera();
+  }
+
+  /**
+   * Libera cámara/mic y detiene el loop del canvas.
+   * Se llama al salir de la vista en vivo (preview, home, finished).
+   */
+  #releaseCamera() {
+    this.renderer.stopLoop();
+    this.camera.stop();
+  }
+
+  /**
+   * Reactiva cámara/mic para volver a grabar.
+   */
+  async #ensureCameraReady() {
+    if (!this.camera.getStream()) {
+      await this.camera.start({ refresh: true });
+      this.renderer.setVideoSource(this.camera.getVideoElement());
+    }
+    this.renderer.startLoop();
   }
 
   /**
@@ -272,18 +293,29 @@ class BabysecSelfieApp {
   #handleRecordingComplete(blob) {
     this.#lastBlob = blob;
     this.#lastFilename = generateFilename();
+    // Ya tenemos el blob: liberar cámara/mic (el LED/indicator del SO se apaga).
+    this.#releaseCamera();
     this.preview.show(blob);
     this.stateManager.setState(AppState.PREVIEW);
   }
 
-  #handleRetry() {
+  async #handleRetry() {
     this.preview.clear();
     this.#lastBlob = null;
     this.#uploadResult = null;
     this.#lastErrorKind = null;
     this.recorder.cancel();
     this.ui.updateLiveIndicators({});
-    this.stateManager.setState(AppState.CAMERA);
+
+    try {
+      await this.#ensureCameraReady();
+      this.stateManager.setState(AppState.CAMERA);
+    } catch (error) {
+      this.#handleError(
+        error instanceof Error ? error.message : 'No se pudo acceder a la cámara.',
+        'camera',
+      );
+    }
   }
 
   async #handleSend() {
@@ -434,6 +466,7 @@ class BabysecSelfieApp {
         });
       }
       this.#lastErrorKind = null;
+      this.#releaseCamera();
       this.stateManager.setState(AppState.FINISHED);
       return;
     }
@@ -442,6 +475,7 @@ class BabysecSelfieApp {
     if (this.#lastErrorKind === 'upload' && this.#lastBlob && this.#participantUuid) {
       this.preview.show(this.#lastBlob);
       this.#lastErrorKind = null;
+      this.#releaseCamera();
       this.stateManager.setState(AppState.PREVIEW);
       return;
     }
@@ -450,19 +484,10 @@ class BabysecSelfieApp {
     this.#lastBlob = null;
     this.#lastErrorKind = null;
 
-    // Cámara ya activa: volver a la vista en vivo.
-    if (this.camera.getStream() && this.#participantUuid) {
-      this.renderer.startLoop();
-      this.stateManager.setState(AppState.CAMERA);
-      return;
-    }
-
-    // Ya registrado pero sin cámara: re-enumerar dispositivos y reintentar acceso.
+    // Volver a la vista en vivo (reactivando cámara si hace falta).
     if (this.#participantUuid && this.#userData) {
       try {
-        await this.camera.start({ refresh: true });
-        this.renderer.setVideoSource(this.camera.getVideoElement());
-        this.renderer.startLoop();
+        await this.#ensureCameraReady();
         this.stateManager.setState(AppState.CAMERA);
       } catch (error) {
         this.#handleError(
@@ -474,6 +499,7 @@ class BabysecSelfieApp {
     }
 
     // Volver a la portada.
+    this.#releaseCamera();
     this.stateManager.setState(AppState.LANDING);
   }
 
@@ -483,6 +509,10 @@ class BabysecSelfieApp {
    */
   #handleError(message, kind = null) {
     this.#lastErrorKind = kind;
+    // Si el error no es de cámara a mitad de setup, liberar hardware.
+    if (kind !== 'camera' && kind !== 'register') {
+      this.#releaseCamera();
+    }
     this.ui.showErrorMessage(message);
     this.stateManager.setState(AppState.ERROR);
   }

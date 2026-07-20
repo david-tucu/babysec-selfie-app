@@ -528,6 +528,18 @@ body {
 }
 
 /* ── Finished & error ── */
+.finished-logo {
+  display: block;
+  width: auto;
+  max-width: min(280px, 72vw);
+  max-height: 120px;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 4px;
+  user-select: none;
+  pointer-events: none;
+}
+
 .success-icon,
 .error-icon {
   width: 72px;

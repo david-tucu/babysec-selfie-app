@@ -50,6 +50,9 @@ export class Recorder {
   /** @type {number|null} */
   #recordingStartedAt = null;
 
+  /** @type {MediaStream|null} */
+  #captureStream = null;
+
   /**
    * @param {{
    *   renderer: import('./Renderer.js').Renderer,
@@ -117,6 +120,25 @@ export class Recorder {
     this.#chunks = [];
     this.#phase = 'idle';
     this.#phaseStartTime = null;
+    this.#releaseCaptureStream();
+  }
+
+  /**
+   * Detiene tracks de canvas.captureStream (no toca cámara/mic).
+   */
+  #releaseCaptureStream() {
+    if (!this.#captureStream) {
+      return;
+    }
+
+    this.#captureStream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        // ignore
+      }
+    });
+    this.#captureStream = null;
   }
 
   /**
@@ -169,12 +191,13 @@ export class Recorder {
   #beginRecording(now) {
     try {
       const canvas = this.#renderer.getCanvas();
-      const canvasStream = canvas.captureStream(CAPTURE_FPS);
+      this.#releaseCaptureStream();
+      this.#captureStream = canvas.captureStream(CAPTURE_FPS);
       const audioTrack = this.#camera.getAudioTrack();
 
       // Combinar video del canvas con audio del micrófono
       const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
+        ...this.#captureStream.getVideoTracks(),
         ...(audioTrack ? [audioTrack] : []),
       ]);
 
@@ -240,6 +263,7 @@ export class Recorder {
         this.#chunks = [];
         this.#chunkCount = 0;
         this.#recordingStartedAt = null;
+        this.#releaseCaptureStream();
 
         if (discard) {
           return;

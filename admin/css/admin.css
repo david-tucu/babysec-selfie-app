@@ -176,9 +176,25 @@ body.admin-body--center {
   border-bottom: 1px solid var(--border);
 }
 
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .search-box {
   flex: 1;
   min-width: 220px;
+}
+
+.btn--danger {
+  --btn-primary-bg: var(--error);
+  --btn-primary-bg-hover: #d94a1f;
+  --btn-primary-bg-active: #c03f18;
+  --btn-shadow: #9a3214;
+  background: var(--btn-primary-bg);
+  color: #fff;
 }
 
 /* ── Form ── */
