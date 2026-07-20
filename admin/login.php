@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once dirname(__DIR__) . '/includes/assets.php';
+send_demo_cache_headers();
 
 if (isAdminLoggedIn()) {
     header('Location: index.php');
@@ -31,7 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin — babysec-selfie</title>
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('css/button.css', '../'), ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('admin/css/admin.css', '../'), ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body class="admin-body admin-body--center">
   <main class="login-card">

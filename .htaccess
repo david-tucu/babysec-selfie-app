@@ -1,0 +1,16 @@
+# Cache corto para etapa de muestra al cliente.
+# Requiere AllowOverride + mod_headers en Apache/MAMP.
+# Cuando el evento esté estable: comentá este bloque o demo_mode=false
+# (el bust ?v=mtime de asset_url sigue ayudando al cambiar archivos).
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(php|html?)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+
+  <FilesMatch "\.(css|js|mjs|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+</IfModule>

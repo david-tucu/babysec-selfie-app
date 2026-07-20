@@ -1,10 +1,9 @@
 /**
  * babysec-selfie — Mobile First
  * Diseño vertical 9:16, sin scroll, botones grandes.
+ *
+ * button.css y landing.css se cargan por <link> en index.php (cache-bust).
  */
-
-@import url('button.css');
-@import url('landing.css');
 
 /* ── Reset & base ── */
 *,
@@ -91,8 +90,8 @@ body {
 
 .screen--registration,
 .screen--finished {
-
-  background-image: url('../assets/fondo.png');
+  background-color: #e5f2f2;
+  /* fondo.png se asigna desde index.php con asset_url() para cache-bust */
   background-position: center;
   background-size: auto 100%;
   background-repeat: no-repeat;
@@ -450,6 +449,8 @@ body {
 
 .preview-controls {
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
   padding: 16px;
   width: 100%;

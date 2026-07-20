@@ -37,6 +37,16 @@ export const FRAME_VIEWPORT = {
 export const CAPTURE_FPS = 30;
 
 /**
+ * Tope de bitrate de video (bps). Sin esto, Chrome puede generar archivos
+ * demasiado grandes para redes móviles lentas (proxy del hosting → HTTP 408 ~45s).
+ * ~500 kbps + audio ≈ 1.3–1.6 MB en ~19s de selfie 1080×1920.
+ */
+export const RECORDER_VIDEO_BITS_PER_SECOND = 500_000;
+
+/** Bitrate de audio (bps) para MediaRecorder. */
+export const RECORDER_AUDIO_BITS_PER_SECOND = 64_000;
+
+/**
  * Preferencia de codec para MediaRecorder (prueba de compatibilidad).
  * - 'vp9' → video/webm;codecs=vp9,opus (default histórico)
  * - 'vp8' → video/webm;codecs=vp8,opus (alternativa a comparar)

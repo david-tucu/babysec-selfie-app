@@ -82,6 +82,66 @@ function registrationVideoUrl(array $entry): ?string
 }
 
 /**
+ * Videos en disco que no están asociados a ningún participante.
+ *
+ * @param array<int, array<string, mixed>>|null $registrations
+ * @return array<int, array{filename: string, size: int, mtime: int, url: string}>
+ */
+function loadOrphanVideos(?array $registrations = null): array
+{
+    if (!is_dir(VIDEOS_DIR)) {
+        return [];
+    }
+
+    $registrations ??= loadRegistrations();
+
+    $linked = [];
+    foreach ($registrations as $entry) {
+        $name = basename((string) ($entry['video_filename'] ?? ''));
+        if ($name !== '') {
+            $linked[$name] = true;
+        }
+    }
+
+    $orphans = [];
+    $allowedExt = ['webm' => true, 'mp4' => true, 'ogg' => true];
+
+    foreach (scandir(VIDEOS_DIR) ?: [] as $file) {
+        if ($file === '.' || $file === '..' || $file === '.gitkeep' || $file === 'index.php') {
+            continue;
+        }
+
+        $path = VIDEOS_DIR . '/' . $file;
+        if (!is_file($path)) {
+            continue;
+        }
+
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        if (!isset($allowedExt[$ext])) {
+            continue;
+        }
+
+        if (isset($linked[$file])) {
+            continue;
+        }
+
+        $orphans[] = [
+            'filename' => $file,
+            'size' => (int) (filesize($path) ?: 0),
+            'mtime' => (int) (filemtime($path) ?: 0),
+            'url' => '../uploads/videos/' . rawurlencode($file),
+        ];
+    }
+
+    usort(
+        $orphans,
+        static fn (array $a, array $b): int => ($b['mtime'] <=> $a['mtime']) ?: strcmp($a['filename'], $b['filename'])
+    );
+
+    return $orphans;
+}
+
+/**
  * Etiqueta legible del estado del participante.
  */
 function formatEstado(?string $estado): string

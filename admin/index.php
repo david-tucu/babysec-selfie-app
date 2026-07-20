@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once dirname(__DIR__) . '/includes/assets.php';
 requireAdmin();
+send_demo_cache_headers();
 
 $registrations = loadRegistrations();
+$orphanVideos = loadOrphanVideos($registrations);
 $today = (new DateTimeImmutable('today', appTimezone()))->format('Y-m-d');
 $todayCount = 0;
 $uploadedCount = 0;
@@ -21,31 +24,57 @@ foreach ($registrations as $entry) {
 }
 
 $totalCount = count($registrations);
+$orphanCount = count($orphanVideos);
+
+// Asegura conexión resuelta para mostrar ruta/aviso de riesgo FTP.
+try {
+    Database::connection();
+} catch (Throwable) {
+    // El listado ya maneja DB vacía/rota; el aviso se omite si no hay path.
+}
+
+$dbPath = Database::path();
+$dbInsideProject = Database::isInsideProject();
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Registros — babysec-selfie</title>
-  <link rel="stylesheet" href="css/admin.css">
-
-  <link rel="icon" href="../assets/icons/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32x32.png">
-
+  <title>Registros — Babysec-selfie - Lo estás haciendo bien</title>
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('css/button.css', '../'), ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('admin/css/admin.css', '../'), ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="icon" href="<?= htmlspecialchars(asset_url('assets/icons/favicon.ico', '../'), ENT_QUOTES, 'UTF-8') ?>" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= htmlspecialchars(asset_url('assets/icons/favicon-32x32.png', '../'), ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body class="admin-body">
   <header class="admin-header">
     <div class="admin-header__inner">
       <div>
-        <h1 class="admin-header__title">Registros de videos</h1>
-        <p class="admin-header__subtitle">babysec-selfie — panel de administración</p>
+        <h1 class="admin-header__title">Registros de participaciones</h1>
+        <p class="admin-header__subtitle">Babysec Selfie — "Lo estás haciendo bien" — panel de administración</p>
       </div>
       <a href="logout.php" class="btn btn--ghost btn--sm">Cerrar sesión</a>
     </div>
   </header>
 
   <main class="admin-main">
+    <?php if ($dbInsideProject): ?>
+      <aside class="admin-banner admin-banner--warn" role="status">
+        <strong>Riesgo de deploy:</strong>
+        la base está dentro del proyecto
+        (<span class="mono"><?= htmlspecialchars($dbPath, ENT_QUOTES, 'UTF-8') ?></span>).
+        Un FTP puede pisarla. En producción, copiá
+        <span class="mono">includes/local.example.php</span> →
+        <span class="mono">includes/local.php</span> y apuntá
+        <span class="mono">database_path</span> /
+        <span class="mono">private_path</span> fuera de la carpeta que subís
+        (ahí también viven <span class="mono">log-participaciones.txt</span> y
+        <span class="mono">log-videos.txt</span>).
+        Ver también <span class="mono">deploy-exclude.txt</span>.
+      </aside>
+    <?php endif; ?>
+
     <section class="stats-grid">
       <article class="stat-card">
         <span class="stat-card__label">Total de registros</span>
@@ -95,7 +124,7 @@ $totalCount = count($registrations);
                 <th>Localidad</th>
                 <th>Email</th>
                 <th>Estado</th>
-                <th>Archivo</th>
+                <th class="col-file">Archivo</th>
                 <th>Tamaño</th>
                 <th>Acciones</th>
               </tr>
@@ -131,7 +160,11 @@ $totalCount = count($registrations);
                       <?= htmlspecialchars(formatEstado($estado), ENT_QUOTES, 'UTF-8') ?>
                     </span>
                   </td>
-                  <td data-label="Archivo" class="mono"><?= htmlspecialchars($entry['video_filename'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                  <td data-label="Archivo" class="col-file">
+                    <span class="file-ellipsis mono" title="<?= htmlspecialchars($entry['video_filename'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                      <?= htmlspecialchars($entry['video_filename'] ?? '—', ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                  </td>
                   <td data-label="Tamaño"><?= htmlspecialchars(formatFileSize(isset($entry['video_size']) ? (int) $entry['video_size'] : null), ENT_QUOTES, 'UTF-8') ?></td>
                   <td data-label="Acciones">
                     <div class="action-group">
@@ -151,8 +184,64 @@ $totalCount = count($registrations);
         <p id="filter-count" class="filter-count"></p>
       <?php endif; ?>
     </section>
+
+    <section class="panel panel--orphans">
+      <div class="panel__toolbar">
+        <div>
+          <h2 class="panel__title muted" >Videos sin registro</h2>
+          <p class="panel__subtitle">Archivos en disco sin registro asociado (<?= $orphanCount ?>)</p>
+        </div>
+      </div>
+
+      <?php if ($orphanCount === 0): ?>
+        <div class="empty-state">
+          <p>No hay videos huérfanos.</p>
+          <p class="empty-state__hint">Todos los archivos de video están vinculados a un participante.</p>
+        </div>
+      <?php else: ?>
+        <div class="table-wrap">
+          <table class="data-table" id="orphans-table">
+            <thead>
+              <tr>
+                <th class="col-file">Archivo</th>
+                <th>Modificado</th>
+                <th>Tamaño</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($orphanVideos as $orphan): ?>
+                <tr>
+                  <td data-label="Archivo" class="col-file">
+                    <span class="file-ellipsis mono" title="<?= htmlspecialchars($orphan['filename'], ENT_QUOTES, 'UTF-8') ?>">
+                      <?= htmlspecialchars($orphan['filename'], ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                  </td>
+                  <td data-label="Modificado">
+                    <?= htmlspecialchars(
+                        $orphan['mtime'] > 0
+                          ? (new DateTimeImmutable('@' . $orphan['mtime']))->setTimezone(appTimezone())->format('d/m/Y H:i')
+                          : '—',
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
+                  </td>
+                  <td data-label="Tamaño"><?= htmlspecialchars(formatFileSize($orphan['size']), ENT_QUOTES, 'UTF-8') ?></td>
+                  <td data-label="Acciones">
+                    <div class="action-group">
+                      <a href="<?= htmlspecialchars($orphan['url'], ENT_QUOTES, 'UTF-8') ?>" class="btn btn--secondary btn--xs" target="_blank" rel="noopener">Ver</a>
+                      <a href="<?= htmlspecialchars($orphan['url'], ENT_QUOTES, 'UTF-8') ?>" class="btn btn--primary btn--xs" download>Descargar</a>
+                    </div>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+    </section>
   </main>
 
-  <script type="module" src="js/admin.js"></script>
+  <script type="module" src="<?= htmlspecialchars(asset_url('admin/js/admin.js', '../'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

@@ -10,6 +10,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/includes/Database.php';
 require_once dirname(__DIR__) . '/includes/UploadTrace.php';
+require_once dirname(__DIR__) . '/includes/ParticipationLog.php';
 
 UploadTrace::begin('upload');
 
@@ -208,6 +209,19 @@ try {
     echo json_encode(['success' => false, 'message' => 'El video se guardó pero no se pudo actualizar el registro.']);
     exit;
 }
+
+// Backup append-only: vínculo uuid ↔ video (también línea VIDEO_LINK en log-participaciones).
+ParticipationLog::logVideo([
+    'uuid' => $uuid,
+    'nombre' => (string) ($participant['nombre'] ?? ''),
+    'apellido' => (string) ($participant['apellido'] ?? ''),
+    'email' => (string) ($participant['email'] ?? ''),
+    'video_filename' => $filename,
+    'video_mime' => $mimeType,
+    'video_size' => (int) $file['size'],
+    'estado' => 'uploaded',
+    'updated_at' => $now,
+]);
 
 $baseUrl = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 $fileUrl = $baseUrl . '/uploads/videos/' . $filename;

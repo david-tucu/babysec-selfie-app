@@ -1,0 +1,29 @@
+# Archivos/carpetas que NUNCA deben sobrescribirse al actualizar por FTP.
+# Configura tu cliente FTP (FileZilla, Cyberduck, etc.) para excluir estas rutas.
+
+# Base de datos y trazas
+data/database.sqlite
+data/database.sqlite-journal
+data/database.sqlite-wal
+data/database.sqlite-shm
+data/*.sqlite
+data/*.sqlite-*
+data/upload-trace.log
+data/private/
+data/log-participaciones.txt
+data/log-videos.txt
+CONSTRUCCION/
+
+# Config local de produccion (ruta de DB/logs fuera del proyecto)
+includes/local.php
+
+# Credenciales admin
+admin/config.php
+
+# Contenido generado por usuarios
+uploads/videos/*
+uploads/registry.json
+
+# Excepciones tipicas a conservar en el remoto
+# !uploads/videos/.gitkeep
+# !uploads/videos/index.php

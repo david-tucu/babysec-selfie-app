@@ -9,6 +9,8 @@ import {
   COUNTDOWN_DURATION_MS,
   CAPTURE_FPS,
   RECORDER_VIDEO_CODEC,
+  RECORDER_VIDEO_BITS_PER_SECOND,
+  RECORDER_AUDIO_BITS_PER_SECOND,
   getSupportedMimeType,
   getRecorderMimeSupport,
   diagnoseRecordingBlob,
@@ -203,7 +205,14 @@ export class Recorder {
 
       const mimeSupport = getRecorderMimeSupport();
       const mimeType = getSupportedMimeType();
-      const options = mimeType ? { mimeType } : undefined;
+      /** @type {MediaRecorderOptions} */
+      const options = {
+        videoBitsPerSecond: RECORDER_VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: RECORDER_AUDIO_BITS_PER_SECOND,
+      };
+      if (mimeType) {
+        options.mimeType = mimeType;
+      }
 
       this.#mediaRecorder = new MediaRecorder(combinedStream, options);
       this.#chunks = [];
@@ -227,7 +236,8 @@ export class Recorder {
       console.log('hasAudioTrack:', Boolean(audioTrack));
       // Sin timeslice: un solo blob al stop → remux seekable (Cues) más fiable.
       console.log('timeslice (ms):', null);
-      console.log('videoBitsPerSecond set?:', false);
+      console.log('videoBitsPerSecond:', RECORDER_VIDEO_BITS_PER_SECOND);
+      console.log('audioBitsPerSecond:', RECORDER_AUDIO_BITS_PER_SECOND);
       console.log('canMakeSeekableWebm:', canMakeSeekableWebm());
       console.groupEnd();
 

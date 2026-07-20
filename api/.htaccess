@@ -1,0 +1,9 @@
+# Subidas lentas (móvil): más tiempo de lectura del body en Apache.
+# Si el hosting usa LiteSpeed/nginx/PHP-FPM, esto puede ignorarse;
+# pedí al soporte timeout ?120s para POST a upload.php.
+#
+# NO usar php_value aquí: en muchos hostings compartidos provoca HTTP 500.
+
+<IfModule mod_reqtimeout.c>
+  RequestReadTimeout header=20-40,MinRate=200 body=120,MinRate=50
+</IfModule>

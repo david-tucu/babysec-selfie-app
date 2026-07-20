@@ -1,3 +1,12 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/includes/assets.php';
+send_demo_cache_headers();
+
+$fondoUrl = asset_url('assets/fondo.png');
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,11 +15,20 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#23135f">
-  <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <link rel="icon" href="<?= htmlspecialchars(asset_url('assets/icons/favicon.ico'), ENT_QUOTES, 'UTF-8') ?>" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= htmlspecialchars(asset_url('assets/icons/favicon-32x32.png'), ENT_QUOTES, 'UTF-8') ?>">
 
   <title>babysec-selfie</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('css/button.css'), ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('css/landing.css'), ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(asset_url('css/style.css'), ENT_QUOTES, 'UTF-8') ?>">
+  <style>
+    .screen--registration,
+    .screen--finished {
+      background-image: url('<?= htmlspecialchars($fondoUrl, ENT_QUOTES, 'UTF-8') ?>');
+    }
+  </style>
 </head>
 <body>
   <div id="app" class="app">
@@ -19,19 +37,19 @@
     <section id="screen-landing" class="screen screen--landing screen--landing-cover">
       <div id="landing" class="landing" aria-label="Portada">
         <div id="landing-stage" class="landing__stage">
-          <img class="landing__bg" src="assets/fondo.png" alt="" decoding="async">
+          <img class="landing__bg" src="<?= htmlspecialchars(asset_url('assets/fondo.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" decoding="async">
 
           <div class="landing__pin" style="--x: 540; --y: 290">
-            <img class="landing__art landing__art--1" src="assets/p1_1.png" alt="" decoding="async">
+            <img class="landing__art landing__art--1" src="<?= htmlspecialchars(asset_url('assets/p1_1.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" decoding="async">
           </div>
           <div class="landing__pin" style="--x: 540; --y: 540">
-            <img class="landing__art landing__art--2" src="assets/p1_2.png" alt="" decoding="async">
+            <img class="landing__art landing__art--2" src="<?= htmlspecialchars(asset_url('assets/p1_2.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" decoding="async">
           </div>
           <div class="landing__pin" style="--x: 540; --y: 920">
-            <img class="landing__art landing__art--3" src="assets/p1_3.png" alt="" decoding="async">
+            <img class="landing__art landing__art--3" src="<?= htmlspecialchars(asset_url('assets/p1_3.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" decoding="async">
           </div>
           <div class="landing__pin" style="--x: 540; --y: 1330">
-            <img class="landing__art landing__art--4" src="assets/p1_4.png" alt="" decoding="async">
+            <img class="landing__art landing__art--4" src="<?= htmlspecialchars(asset_url('assets/p1_4.png'), ENT_QUOTES, 'UTF-8') ?>" alt="" decoding="async">
           </div>
           <div class="landing__pin landing__pin--cta" style="--x: 540; --y: 1590">
             <button id="btn-start" type="button" class="btn btn--primary btn--large landing__cta">
@@ -49,20 +67,20 @@
           <span class="registration-back__icon" aria-hidden="true">←</span>
         </button>
 
-        <img src="assets/logo.png" alt="Logo del evento" class="brand-logo">
+        <img src="<?= htmlspecialchars(asset_url('assets/logo.png'), ENT_QUOTES, 'UTF-8') ?>" alt="Logo del evento" class="brand-logo">
         <h1 class="title" style="display: none;">babysec-selfie</h1>
         <p class="subtitle">Completá tus datos para participar.</p>
 
         <form id="registration-form" class="registration-form" novalidate>
           <div class="form-field">
             <label for="input-nombre" class="form-label">Nombre</label>
-            <input value="DAV" id="input-nombre" name="nombre" type="text" class="form-input form-input--uppercase" autocomplete="given-name" autocapitalize="characters" placeholder="Tu nombre" required>
+            <input value="" id="input-nombre" name="nombre" type="text" class="form-input form-input--uppercase" autocomplete="given-name" autocapitalize="characters" placeholder="Tu nombre" required>
             <span id="error-nombre" class="form-error hidden"></span>
           </div>
 
           <div class="form-field">
             <label for="input-apellido" class="form-label">Apellido</label>
-            <input value="BED" id="input-apellido" name="apellido" type="text" class="form-input form-input--uppercase" autocomplete="family-name" autocapitalize="characters" placeholder="Tu apellido" required>
+            <input value="" id="input-apellido" name="apellido" type="text" class="form-input form-input--uppercase" autocomplete="family-name" autocapitalize="characters" placeholder="Tu apellido" required>
             <span id="error-apellido" class="form-error hidden"></span>
           </div>
 
@@ -74,7 +92,7 @@
 
           <div class="form-field">
             <label for="input-email" class="form-label">Correo electrónico</label>
-            <input value="dav@bed.com" id="input-email" name="email" type="email" class="form-input" autocomplete="email" placeholder="tu@email.com" inputmode="email" required>
+            <input value="" id="input-email" name="email" type="email" class="form-input" autocomplete="email" placeholder="tu@email.com" inputmode="email" required>
             <span id="error-email" class="form-error hidden"></span>
           </div>
 
@@ -140,7 +158,7 @@
       <div class="screen__content">
         <img
           class="finished-logo"
-          src="assets/p1_2.png"
+          src="<?= htmlspecialchars(asset_url('assets/p1_2.png'), ENT_QUOTES, 'UTF-8') ?>"
           alt="Logo del evento"
           decoding="async"
         >
@@ -171,7 +189,7 @@
   </div>
 
   <!-- ts-ebml (UMD): remux WebM seekable para players nativos Android -->
-  <script src="js/vendor/EBML.js"></script>
-  <script type="module" src="js/app.js"></script>
+  <script src="<?= htmlspecialchars(asset_url('js/vendor/EBML.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
+  <script type="module" src="<?= htmlspecialchars(asset_url('js/app.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

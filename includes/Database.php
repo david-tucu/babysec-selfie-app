@@ -6,12 +6,38 @@ require_once __DIR__ . '/timezone.php';
 
 /**
  * Conexion PDO a SQLite y bootstrap del esquema.
+ *
+ * La ruta puede overridearse en includes/local.php (no versionado / no FTP)
+ * para que un deploy no pise la base de producción.
  */
 final class Database
 {
     private const DB_RELATIVE_PATH = '/data/database.sqlite';
 
     private static ?PDO $pdo = null;
+
+    private static ?string $resolvedPath = null;
+
+    /**
+     * Ruta absoluta del archivo SQLite en uso.
+     */
+    public static function path(): string
+    {
+        return self::$resolvedPath ?? self::resolvePath();
+    }
+
+    /**
+     * true si la DB vive dentro del directorio del proyecto (riesgo FTP).
+     */
+    public static function isInsideProject(): bool
+    {
+        $root = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
+        $db = self::path();
+        $rootPrefix = rtrim(str_replace('\\', '/', $root), '/') . '/';
+        $dbNorm = str_replace('\\', '/', $db);
+
+        return str_starts_with($dbNorm, $rootPrefix);
+    }
 
     /**
      * Devuelve la conexion PDO compartida (lazy singleton).
@@ -22,12 +48,12 @@ final class Database
             return self::$pdo;
         }
 
-        $root = dirname(__DIR__);
-        $dataDir = $root . '/data';
-        $dbPath = $root . self::DB_RELATIVE_PATH;
+        $dbPath = self::resolvePath();
+        self::$resolvedPath = $dbPath;
 
-        if (!is_dir($dataDir) && !mkdir($dataDir, 0775, true) && !is_dir($dataDir)) {
-            throw new RuntimeException('No se pudo crear el directorio data/.');
+        $dbDir = dirname($dbPath);
+        if (!is_dir($dbDir) && !mkdir($dbDir, 0775, true) && !is_dir($dbDir)) {
+            throw new RuntimeException('No se pudo crear el directorio de la base de datos: ' . $dbDir);
         }
 
         $pdo = new PDO('sqlite:' . $dbPath, null, null, [
@@ -44,6 +70,40 @@ final class Database
         self::$pdo = $pdo;
 
         return self::$pdo;
+    }
+
+    /**
+     * Resuelve ruta: includes/local.php['database_path'] o data/database.sqlite.
+     */
+    private static function resolvePath(): string
+    {
+        $root = dirname(__DIR__);
+        $default = $root . self::DB_RELATIVE_PATH;
+        $localFile = __DIR__ . '/local.php';
+
+        if (!is_file($localFile)) {
+            return $default;
+        }
+
+        /** @var mixed $local */
+        $local = require $localFile;
+        if (!is_array($local)) {
+            return $default;
+        }
+
+        $custom = $local['database_path'] ?? null;
+        if (!is_string($custom) || trim($custom) === '') {
+            return $default;
+        }
+
+        $custom = trim($custom);
+
+        // Relativa al root del proyecto si no es absoluta.
+        if ($custom[0] !== '/' && !preg_match('/^[A-Za-z]:[\\\\\\/]/', $custom)) {
+            $custom = $root . '/' . ltrim($custom, '/\\');
+        }
+
+        return $custom;
     }
 
     /**

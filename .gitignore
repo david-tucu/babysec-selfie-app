@@ -1,10 +1,17 @@
 uploads/videos/*
 !uploads/videos/.gitkeep
 !uploads/videos/index.php
+uploads/registry.json
 admin/config.php
+includes/local.php
 data/database.sqlite
 data/database.sqlite-journal
 data/database.sqlite-wal
 data/database.sqlite-shm
+data/*.sqlite
+data/*.sqlite-*
 data/upload-trace.log
+data/private/
+data/log-participaciones.txt
+data/log-videos.txt
 .DS_Store

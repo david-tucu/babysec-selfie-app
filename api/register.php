@@ -7,9 +7,15 @@
 
 declare(strict_types=1);
 
+//muestra errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/includes/Database.php';
+require_once dirname(__DIR__) . '/includes/ParticipationLog.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -89,6 +95,17 @@ try {
     echo json_encode(['success' => false, 'message' => 'No se pudo registrar al participante.']);
     exit;
 }
+
+// Backup append-only (no bloquea la respuesta si falla el disco).
+ParticipationLog::logRegistration([
+    'uuid' => $uuid,
+    'nombre' => $nombre,
+    'apellido' => $apellido,
+    'localidad' => $localidad,
+    'email' => $email,
+    'estado' => 'registered',
+    'created_at' => $now,
+]);
 
 echo json_encode([
     'success' => true,
