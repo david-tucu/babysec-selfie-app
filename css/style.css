@@ -85,10 +85,17 @@ body {
 }
 
 .screen--landing,
-.screen--registration,
-.screen--finished,
 .screen--error {
   background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface) 100%);
+}
+
+.screen--registration,
+.screen--finished {
+
+  background-image: url('../assets/fondo.png');
+  background-position: center;
+  background-size: auto 100%;
+  background-repeat: no-repeat;
 }
 
 .screen__content {
@@ -328,6 +335,7 @@ body {
 .screen--camera {
   padding: 0;
   justify-content: flex-start;
+  background: transparent;
 }
 
 .canvas-container {
@@ -337,7 +345,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #000;
+  background: transparent;
 }
 
 .live-canvas {

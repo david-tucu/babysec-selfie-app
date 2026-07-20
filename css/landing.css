@@ -7,7 +7,7 @@
   justify-content: stretch;
   align-items: stretch;
   overflow: hidden;
-  background: #c1dbf2;
+  background: transparent;
 }
 
 .landing {
@@ -15,7 +15,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #c1dbf2;
+  background: transparent;
 }
 
 .landing__stage {
